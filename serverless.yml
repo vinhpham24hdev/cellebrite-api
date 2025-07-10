@@ -1,0 +1,401 @@
+service: cellebrite-screen-capture-api
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${opt:region, 'ap-southeast-2'}
+  stage: ${opt:stage, 'dev'}
+  timeout: 30
+  memorySize: 512
+  
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+    USERS_TABLE: ${self:service}-users-${self:provider.stage}
+    CASES_TABLE: ${self:service}-cases-${self:provider.stage}
+    FILES_TABLE: ${self:service}-files-${self:provider.stage}
+    S3_BUCKET: ${self:service}-uploads-${self:provider.stage}
+    JWT_SECRET: ${env:JWT_SECRET, 'your-super-secret-jwt-key-change-in-production'}
+    CORS_ORIGIN: ${env:CORS_ORIGIN, '*'}
+    
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:BatchWriteItem
+          Resource:
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CASES_TABLE}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.FILES_TABLE}"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE}/index/*"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CASES_TABLE}/index/*"
+            - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.FILES_TABLE}/index/*"
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:PutObjectAcl
+            - s3:GetObjectAcl
+          Resource:
+            - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*"
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+          Resource:
+            - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}"
+
+functions:
+  # Health Check
+  health:
+    handler: src/handlers/health.handler
+    events:
+      - http:
+          path: /health
+          method: get
+          cors: true
+
+  # Authentication endpoints
+  login:
+    handler: src/handlers/auth.login
+    events:
+      - http:
+          path: /auth/login
+          method: post
+          cors: true
+
+  me:
+    handler: src/handlers/auth.me
+    events:
+      - http:
+          path: /auth/me
+          method: get
+          cors: true
+
+  logout:
+    handler: src/handlers/auth.logout
+    events:
+      - http:
+          path: /auth/logout
+          method: post
+          cors: true
+
+  refresh:
+    handler: src/handlers/auth.refresh
+    events:
+      - http:
+          path: /auth/refresh
+          method: post
+          cors: true
+
+  # Cases endpoints
+  getCases:
+    handler: src/handlers/cases.getCases
+    events:
+      - http:
+          path: /cases
+          method: get
+          cors: true
+
+  createCase:
+    handler: src/handlers/cases.createCase
+    events:
+      - http:
+          path: /cases
+          method: post
+          cors: true
+
+  getCase:
+    handler: src/handlers/cases.getCase
+    events:
+      - http:
+          path: /cases/{id}
+          method: get
+          cors: true
+
+  updateCase:
+    handler: src/handlers/cases.updateCase
+    events:
+      - http:
+          path: /cases/{id}
+          method: patch
+          cors: true
+
+  deleteCase:
+    handler: src/handlers/cases.deleteCase
+    events:
+      - http:
+          path: /cases/{id}
+          method: delete
+          cors: true
+
+  getCaseStats:
+    handler: src/handlers/cases.getCaseStats
+    events:
+      - http:
+          path: /cases/stats
+          method: get
+          cors: true
+
+  getAvailableTags:
+    handler: src/handlers/cases.getAvailableTags
+    events:
+      - http:
+          path: /cases/tags
+          method: get
+          cors: true
+
+  bulkUpdateCases:
+    handler: src/handlers/cases.bulkUpdateCases
+    events:
+      - http:
+          path: /cases/bulk-update
+          method: patch
+          cors: true
+
+  updateCaseMetadata:
+    handler: src/handlers/cases.updateCaseMetadata
+    events:
+      - http:
+          path: /cases/{id}/metadata
+          method: patch
+          cors: true
+
+  exportCases:
+    handler: src/handlers/cases.exportCases
+    events:
+      - http:
+          path: /cases/export
+          method: get
+          cors: true
+
+  # Upload endpoints
+  getPresignedUrl:
+    handler: src/handlers/upload.getPresignedUrl
+    events:
+      - http:
+          path: /upload/presigned-url
+          method: post
+          cors: true
+
+  confirmUpload:
+    handler: src/handlers/upload.confirmUpload
+    events:
+      - http:
+          path: /upload/confirm
+          method: post
+          cors: true
+
+  deleteFile:
+    handler: src/handlers/upload.deleteFile
+    events:
+      - http:
+          path: /upload/file
+          method: delete
+          cors: true
+
+  getCaseFiles:
+    handler: src/handlers/upload.getCaseFiles
+    events:
+      - http:
+          path: /upload/cases/{caseId}/files
+          method: get
+          cors: true
+
+  getDownloadUrl:
+    handler: src/handlers/upload.getDownloadUrl
+    events:
+      - http:
+          path: /upload/download/{fileKey+}
+          method: get
+          cors: true
+
+  getUploadStats:
+    handler: src/handlers/upload.getUploadStats
+    events:
+      - http:
+          path: /upload/stats
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    # S3 Bucket for file uploads
+    UploadsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.S3_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders: ['*']
+              AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
+              AllowedOrigins: ['*']
+              MaxAge: 3000
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        VersioningConfiguration:
+          Status: Enabled
+        LifecycleConfiguration:
+          Rules:
+            - Id: DeleteIncompleteMultipartUploads
+              Status: Enabled
+              AbortIncompleteMultipartUpload:
+                DaysAfterInitiation: 7
+
+    # DynamoDB Tables
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+          - AttributeName: username
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: UsernameIndex
+            KeySchema:
+              - AttributeName: username
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
+    CasesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.CASES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+          - AttributeName: status
+            AttributeType: S
+          - AttributeName: assignedTo
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CreatedAtIndex
+            KeySchema:
+              - AttributeName: createdAt
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: StatusIndex
+            KeySchema:
+              - AttributeName: status
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: AssignedToIndex
+            KeySchema:
+              - AttributeName: assignedTo
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
+    FilesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.FILES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: caseId
+            AttributeType: S
+          - AttributeName: uploadedAt
+            AttributeType: S
+          - AttributeName: fileKey
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CaseIdIndex
+            KeySchema:
+              - AttributeName: caseId
+                KeyType: HASH
+              - AttributeName: uploadedAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: FileKeyIndex
+            KeySchema:
+              - AttributeName: fileKey
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
+  Outputs:
+    ApiGatewayRestApiId:
+      Value:
+        Ref: ApiGatewayRestApi
+      Export:
+        Name: ${self:service}-${self:provider.stage}-restApiId
+
+    ApiGatewayRestApiRootResourceId:
+      Value:
+        Fn::GetAtt:
+          - ApiGatewayRestApi
+          - RootResourceId
+      Export:
+        Name: ${self:service}-${self:provider.stage}-rootResourceId
+
+    S3BucketName:
+      Value: ${self:provider.environment.S3_BUCKET}
+      Export:
+        Name: ${self:service}-${self:provider.stage}-s3Bucket
+
+plugins:
+  - serverless-offline
+  - serverless-webpack
+
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+    packager: 'npm'
+  serverless-offline:
+    httpPort: 3001
+    host: 0.0.0.0
+    corsAllowHeaders: 'accept,accept-language,authorization,cache-control,content-length,content-type,x-api-key,x-amz-date,x-amz-security-token,x-amz-user-agent'
+    corsAllowOrigin: '*'
