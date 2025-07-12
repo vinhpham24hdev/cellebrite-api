@@ -1,11 +1,11 @@
-# Cellebrite Screen Capture API
+# Cellebrite Screen Capture API 🚀
 
 AWS Lambda backend for the Cellebrite Screen Capture Tool, built with Serverless Framework, DynamoDB, and S3.
 
 ## 🏗️ Architecture
 
 - **AWS Lambda** - Serverless functions for API endpoints
-- **DynamoDB** - NoSQL database for users, cases, and file metadata
+- **DynamoDB** - NoSQL database for users, cases, and file metadata  
 - **S3** - Object storage for screenshots and videos
 - **API Gateway** - REST API with CORS support
 - **JWT** - Authentication and authorization
@@ -16,7 +16,7 @@ AWS Lambda backend for the Cellebrite Screen Capture Tool, built with Serverless
 ├── src/
 │   ├── handlers/           # Lambda function handlers
 │   │   ├── auth.js        # Authentication endpoints
-│   │   ├── cases.js       # Case management endpoints
+│   │   ├── cases.js       # Case management endpoints  
 │   │   ├── upload.js      # File upload endpoints
 │   │   └── health.js      # Health check endpoint
 │   ├── middleware/        # Middleware functions
@@ -24,461 +24,647 @@ AWS Lambda backend for the Cellebrite Screen Capture Tool, built with Serverless
 │   └── utils/             # Utility functions
 │       └── response.js    # Response helpers
 ├── scripts/               # Deployment and utility scripts
-│   └── deploy.sh         # Automated deployment script
 ├── serverless.yml        # Serverless Framework configuration
 ├── package.json          # Dependencies and scripts
 └── webpack.config.js     # Webpack configuration
 ```
 
-## 🚀 Quick Start
+## 🚀 Quick Setup (3 Steps)
 
-### Prerequisites
-
-- Node.js 18+
-- AWS CLI configured with appropriate permissions
-- Serverless Framework
-
-### Installation
+### Step 1: Install Dependencies
 
 ```bash
-# Clone the repository (if separate from frontend)
+# Clone repository
 git clone <repository-url>
 cd cellebrite-screen-capture-api
 
 # Install dependencies
 npm install
 
-# Install Serverless Framework globally (if not installed)
+# Install Serverless Framework (if not already installed)
 npm install -g serverless
 ```
 
-### Configuration
+### Step 2: Configure AWS
 
-1. **Environment Variables** (create `.env` file):
-```bash
-# Required for production
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
-
-# Optional
-CORS_ORIGIN=*
-```
-
-2. **AWS Credentials**: Configure AWS CLI or use environment variables:
+**Option A: Using AWS Configure (Recommended)**
 ```bash
 aws configure
-# OR
+# AWS Access Key ID: your-access-key
+# AWS Secret Access Key: your-secret-key  
+# Default region: ap-southeast-2
+# Default output format: json
+```
+
+**Option B: Environment Variables**
+```bash
 export AWS_ACCESS_KEY_ID=your-access-key
 export AWS_SECRET_ACCESS_KEY=your-secret-key
+export AWS_DEFAULT_REGION=ap-southeast-2
 ```
 
-### Deployment
+### Step 3: Deploy
 
-#### Option 1: Using the deployment script (Recommended)
 ```bash
-# Development deployment
-./scripts/deploy.sh --stage dev --region ap-southeast-2
+# Create .env file
+cp .env.development .env
 
-# Production deployment
-./scripts/deploy.sh --stage production --region ap-southeast-2 --profile production
-```
+# Generate JWT secret
+echo "JWT_SECRET=$(openssl rand -base64 32)" >> .env
 
-#### Option 2: Manual deployment
-```bash
-# Development
+# Deploy
 serverless deploy --stage dev --region ap-southeast-2
-
-# Production
-serverless deploy --stage production --region ap-southeast-2
 ```
 
-### Local Development
+**🎉 Done! API will be automatically deployed with all resources.**
+
+---
+
+## 🛠️ Detailed Setup
+
+### Prerequisites
+
+- **Node.js 18+** - [Download](https://nodejs.org/)
+- **AWS CLI** - [Install Guide](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html)
+- **AWS Account** with sufficient permissions
+
+### 1. Project Installation
 
 ```bash
-# Start offline development server
+# Clone and install
+git clone <repository-url>
+cd cellebrite-screen-capture-api
+npm install
+
+# Check versions
+node -v  # >= 18.0.0
+npm -v
+aws --version
+```
+
+### 2. AWS Credentials Setup
+
+#### Method 1: AWS IAM User (Recommended)
+
+1. **Create IAM User** in AWS Console:
+   - Go to IAM → Users → Create user
+   - Username: `cellebrite-api-user`
+
+2. **Add Permissions** - Attach these policies:
+   ```
+   ✅ AmazonS3FullAccess
+   ✅ AmazonDynamoDBFullAccess  
+   ✅ AWSLambdaFullAccess
+   ✅ IAMFullAccess
+   ✅ AmazonAPIGatewayAdministrator
+   ✅ AWSCloudFormationFullAccess
+   ✅ CloudWatchLogsFullAccess
+   ```
+
+3. **Create Access Keys**:
+   - Security credentials → Create access key
+   - Choose "CLI" → Create access key
+   - **Save credentials securely!**
+
+4. **Configure AWS CLI**:
+   ```bash
+   aws configure
+   # Enter access key, secret key, region: ap-southeast-2
+   ```
+
+#### Method 2: Admin Access (Fastest for development)
+
+```bash
+# Attach AdminAccess policy to user
+aws iam attach-user-policy \
+  --user-name cellebrite-api-user \
+  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+```
+
+### 3. Environment Configuration
+
+```bash
+# Create .env file from template
+cp .env.development .env
+
+# Generate secure JWT secret
+openssl rand -base64 32  # Copy output
+
+# Update .env file
+JWT_SECRET=your-generated-secret-here
+STAGE=dev
+REGION=ap-southeast-2
+NODE_ENV=development
+```
+
+### 4. Local Development (Optional)
+
+```bash
+# Test locally before deployment
 npm run dev
 
-# The API will be available at http://localhost:3001
+# API will run at http://localhost:3001
+# Test: curl http://localhost:3001/health
 ```
+
+### 5. Deployment
+
+#### Option A: Deploy Script (Recommended)
+```bash
+# Make script executable
+chmod +x scripts/deploy.sh
+
+# Deploy with auto-fix
+./scripts/deploy.sh --stage dev --region ap-southeast-2
+```
+
+#### Option B: Manual Deploy
+```bash
+# Validate config
+serverless config validate
+
+# Deploy
+serverless deploy --stage dev --region ap-southeast-2 --verbose
+
+# Get API endpoint  
+serverless info --stage dev
+```
+
+### 6. Verify Deployment
+
+```bash
+# Test health endpoint
+curl https://your-api-endpoint/health
+
+# Test login with demo user
+curl -X POST https://your-api-endpoint/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "demo",
+    "password": "password"
+  }'
+```
+
+---
 
 ## 📚 API Documentation
 
 ### Base URL
-- **Development**: `https://api-dev.your-domain.com`
-- **Production**: `https://api.your-domain.com`
+- **Development**: `https://api-gateway-id.execute-api.ap-southeast-2.amazonaws.com/dev`
+- **Production**: `https://api-gateway-id.execute-api.ap-southeast-2.amazonaws.com/production`
+
+### Demo Credentials
+```json
+{
+  "username": "demo",
+  "password": "password"
+}
+```
 
 ### Authentication
 
-All endpoints except `/health` and `/auth/login` require JWT authentication:
+All endpoints (except `/health` and `/auth/login`) require JWT token:
 
 ```http
 Authorization: Bearer <jwt-token>
 ```
 
-### Endpoints
+### Core Endpoints
 
-#### Health Check
+#### 🔐 Authentication
 ```http
-GET /health
+POST /auth/login         # Login
+GET  /auth/me           # Current user info
+POST /auth/logout       # Logout
+POST /auth/refresh      # Refresh token
 ```
 
-#### Authentication
+#### 📁 Case Management
 ```http
-POST /auth/login
-POST /auth/logout
-GET /auth/me
-POST /auth/refresh
+GET    /cases           # Get cases list
+POST   /cases           # Create new case
+GET    /cases/{id}      # Get case details
+PATCH  /cases/{id}      # Update case
+DELETE /cases/{id}      # Delete case
+GET    /cases/stats     # Get case statistics
 ```
 
-#### Cases
+#### 📂 File Upload
 ```http
-GET /cases
-POST /cases
-GET /cases/{id}
-PATCH /cases/{id}
-DELETE /cases/{id}
-GET /cases/stats
-GET /cases/tags
-PATCH /cases/bulk-update
-PATCH /cases/{id}/metadata
-GET /cases/export
+POST   /upload/presigned-url              # Get presigned URL
+POST   /upload/confirm                    # Confirm upload
+GET    /upload/cases/{caseId}/files       # Get case files
+GET    /upload/download/{fileKey}         # Download file
+DELETE /upload/file                      # Delete file
 ```
 
-#### File Upload
+#### 🏥 Health Check
 ```http
-POST /upload/presigned-url
-POST /upload/confirm
-DELETE /upload/file
-GET /upload/cases/{caseId}/files
-GET /upload/download/{fileKey}
-GET /upload/stats
+GET /health            # Check API status
 ```
 
-### Example Requests
+### Example Usage
 
 #### Login
 ```bash
-curl -X POST https://api.your-domain.com/auth/login \
+curl -X POST https://your-api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{
-    "username": "demo.user@cellebrite.com",
-    "password": "password"
-  }'
+  -d '{"username": "demo", "password": "password"}'
 ```
 
 #### Create Case
 ```bash
-curl -X POST https://api.your-domain.com/cases \
+curl -X POST https://your-api/cases \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <jwt-token>" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "title": "Investigation Case",
-    "description": "Website security analysis",
+    "title": "Website Investigation",
+    "description": "Security analysis case",
     "priority": "high",
-    "tags": ["security", "analysis"]
+    "tags": ["security", "web"]
   }'
 ```
 
-#### Get Presigned Upload URL
-```bash
-curl -X POST https://api.your-domain.com/upload/presigned-url \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <jwt-token>" \
-  -d '{
-    "fileName": "screenshot.png",
-    "fileType": "image/png",
-    "caseId": "Case-202412150001",
-    "captureType": "screenshot",
-    "fileSize": 1048576
-  }'
-```
+---
 
 ## 🗄️ Database Schema
 
 ### Users Table
-```json
-{
-  "id": "string (Primary Key)",
-  "username": "string (GSI)",
-  "email": "string (GSI)",
-  "firstName": "string",
-  "lastName": "string",
-  "role": "string",
-  "permissions": ["string"],
-  "password": "string (hashed)",
-  "createdAt": "string (ISO)",
-  "lastLogin": "string (ISO)",
-  "isActive": "boolean"
-}
-```
+- `id` (Primary Key) - User ID
+- `username` (GSI) - Username for login
+- `email` (GSI) - Email address
+- `role` - User role (analyst, admin, etc.)
+- `isActive` - Account status
 
-### Cases Table
-```json
-{
-  "id": "string (Primary Key)",
-  "title": "string",
-  "description": "string",
-  "status": "active|pending|closed|archived",
-  "priority": "low|medium|high|critical",
-  "tags": ["string"],
-  "createdAt": "string (ISO, GSI)",
-  "updatedAt": "string (ISO)",
-  "createdBy": "string",
-  "assignedTo": "string (GSI)",
-  "metadata": {
-    "totalScreenshots": "number",
-    "totalVideos": "number",
-    "totalFileSize": "number",
-    "lastActivity": "string (ISO)"
-  }
-}
-```
+### Cases Table  
+- `id` (Primary Key) - Case ID (format: Case-YYYYMMDDXXXX)
+- `title` - Case title
+- `status` - active | pending | closed | archived
+- `priority` - low | medium | high | critical
+- `createdAt` (GSI) - Timestamp
+- `assignedTo` (GSI) - Assigned user
 
 ### Files Table
-```json
-{
-  "id": "string (Primary Key)",
-  "fileKey": "string (GSI)",
-  "fileName": "string",
-  "originalName": "string",
-  "fileType": "string",
-  "fileSize": "number",
-  "caseId": "string (GSI)",
-  "captureType": "screenshot|video",
-  "uploadedBy": "string",
-  "uploadedAt": "string (ISO)",
-  "status": "pending|completed|failed",
-  "checksum": "string",
-  "expiresAt": "string (ISO)"
-}
-```
+- `id` (Primary Key) - File ID
+- `fileKey` (GSI) - S3 object key
+- `caseId` (GSI) - Associated case
+- `captureType` - screenshot | video
+- `status` - pending | completed | failed
 
-## 🔒 Security
+---
 
-### Authentication
-- JWT tokens with configurable expiration
-- Bcrypt password hashing
-- Role-based access control
+## 🔧 Development Commands
 
-### Authorization
-- Resource-level permissions
-- User role validation
-- API rate limiting (planned)
-
-### Data Protection
-- S3 server-side encryption (AES256)
-- HTTPS only communication
-- CORS configuration
-- Input validation and sanitization
-
-## 🛠️ Configuration
-
-### Environment Variables
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `STAGE` | Deployment stage | `dev` | Yes |
-| `REGION` | AWS region | `ap-southeast-2` | Yes |
-| `USERS_TABLE` | DynamoDB users table name | Auto-generated | Yes |
-| `CASES_TABLE` | DynamoDB cases table name | Auto-generated | Yes |
-| `FILES_TABLE` | DynamoDB files table name | Auto-generated | Yes |
-| `S3_BUCKET` | S3 bucket name | Auto-generated | Yes |
-| `JWT_SECRET` | JWT signing secret | Random (dev) | Yes (prod) |
-| `CORS_ORIGIN` | CORS allowed origins | `*` | No |
-
-### DynamoDB Configuration
-
-- **Billing Mode**: Pay-per-request
-- **Encryption**: At rest with AWS managed keys
-- **Streams**: Enabled for audit logging
-- **Global Secondary Indexes**: For efficient querying
-
-### S3 Configuration
-
-- **Encryption**: AES256 server-side encryption
-- **Versioning**: Enabled
-- **CORS**: Configured for web uploads
-- **Lifecycle**: 7-day incomplete multipart upload cleanup
-
-## 📊 Monitoring & Logging
-
-### CloudWatch Metrics
-- Lambda function execution metrics
-- DynamoDB read/write capacity
-- S3 request metrics
-- API Gateway metrics
-
-### Logging
-- Structured JSON logging
-- Request/response logging
-- Error tracking with stack traces
-- Performance monitoring
-
-### Health Checks
 ```bash
-# Check API health
-curl https://api.your-domain.com/health
+# Local development
+npm run dev                    # Start serverless offline
 
-# Response includes:
-# - API status
-# - Database connectivity
-# - S3 bucket accessibility
-# - Environment validation
+# Build and deploy
+npm run build                  # Build with webpack  
+npm run deploy                 # Deploy to AWS
+npm run deploy:production      # Deploy to production
+
+# Monitoring
+npm run info                   # Get deployment info
+npm run logs                   # View function logs
+
+# Cleanup
+npm run clean                  # Clean build artifacts
+npm run remove                 # Remove AWS stack
 ```
 
-## 🔧 Development
-
-### Local Development
-```bash
-# Start serverless offline
-npm run dev
-
-# Run tests
-npm test
-
-# Lint code
-npm run lint
-
-# Build for deployment
-npm run build
-```
-
-### Testing
-```bash
-# Run all tests
-npm test
-
-# Run tests with coverage
-npm run test:coverage
-
-# Run tests in watch mode
-npm run test:watch
-```
-
-### Debugging
-```bash
-# View function logs
-serverless logs -f functionName --stage dev --tail
-
-# View all logs
-serverless logs --stage dev --tail
-
-# Debug specific function
-serverless invoke -f functionName --stage dev --data '{"test": "data"}'
-```
-
-## 🚀 Deployment
-
-### Staging Deployment
-```bash
-./scripts/deploy.sh --stage staging --region ap-southeast-2
-```
-
-### Production Deployment
-```bash
-# Set production environment variables
-export JWT_SECRET="your-production-jwt-secret"
-
-# Deploy with confirmation prompt
-./scripts/deploy.sh --stage production --region ap-southeast-2
-
-# Or deploy with specific AWS profile
-./scripts/deploy.sh --stage production --region ap-southeast-2 --profile production
-```
-
-### Rollback
-```bash
-# List deployments
-serverless deploy list --stage production
-
-# Rollback to previous deployment
-serverless rollback --timestamp <timestamp> --stage production
-```
-
-### Remove Stack
-```bash
-serverless remove --stage dev --region ap-southeast-2
-```
-
-## 📈 Performance
-
-### Optimization
-- Lambda function warming
-- DynamoDB query optimization
-- S3 presigned URL caching
-- Efficient pagination
-
-### Limits
-- **File Upload**: 100MB per file
-- **Request Timeout**: 30 seconds
-- **Concurrent Executions**: 1000 (default)
-- **DynamoDB**: Pay-per-request billing
-
-## 🐛 Troubleshooting
+## 🚨 Troubleshooting
 
 ### Common Issues
 
-#### Deployment Fails
+#### 1. "AWS credentials not configured"
 ```bash
-# Check AWS credentials
+# Check credentials
 aws sts get-caller-identity
 
+# Reconfigure
+aws configure
+```
+
+#### 2. "Cannot find module" errors  
+```bash
+# Clean and reinstall
+rm -rf node_modules .webpack
+npm install
+```
+
+#### 3. "Bucket already exists"
+```bash
+# Update bucket name in .env
+S3_BUCKET=your-unique-bucket-name-$(date +%s)
+```
+
+#### 4. Deployment fails
+```bash
 # Check IAM permissions
-aws iam get-user
+aws iam list-attached-user-policies --user-name your-user
 
 # Validate serverless config
 serverless config validate
 ```
 
-#### Database Connection Issues
+#### 5. Health check fails
 ```bash
-# Check table exists
-aws dynamodb describe-table --table-name <table-name>
+# Check deployment status
+serverless info --stage dev
 
-# Check table status
-aws dynamodb list-tables
+# View logs
+serverless logs -f health --stage dev --tail
 ```
 
-#### S3 Upload Issues
-```bash
-# Check bucket exists
-aws s3 ls s3://<bucket-name>
+### Debug Commands
 
-# Check bucket permissions
-aws s3api get-bucket-location --bucket <bucket-name>
+```bash
+# Test specific function
+serverless invoke -f health --stage dev
+
+# View detailed logs
+aws logs tail /aws/lambda/cellebrite-screen-capture-api-dev-health
+
+# Check DynamoDB tables
+aws dynamodb list-tables --region ap-southeast-2
+
+# Check S3 buckets  
+aws s3 ls
 ```
 
-#### Authentication Issues
-- Verify JWT secret is set correctly
-- Check token expiration
-- Validate user permissions
+---
 
-### Error Codes
+## 🚀 Production Deployment
 
-| Code | Description | Solution |
-|------|-------------|----------|
-| 401 | Unauthorized | Check JWT token |
-| 403 | Forbidden | Verify user permissions |
-| 404 | Not Found | Check resource exists |
-| 409 | Conflict | Resource already exists |
-| 429 | Rate Limited | Reduce request frequency |
-| 500 | Server Error | Check logs for details |
+### 1. Environment Setup
+```bash
+# Use production config
+cp .env.production .env
 
-## 📝 Contributing
+# Generate production JWT secret
+echo "JWT_SECRET=$(openssl rand -base64 64)" >> .env
 
+# Set CORS origin
+echo "CORS_ORIGIN=https://your-frontend-domain.com" >> .env
+```
+
+### 2. Deploy
+```bash
+serverless deploy --stage production --region ap-southeast-2
+```
+
+### 3. Post-deployment
+```bash
+# Test production API
+curl https://your-production-api/health
+
+# Monitor logs
+serverless logs -f health --stage production --tail
+```
+
+---
+
+## 📊 Monitoring & Logs
+
+### CloudWatch Logs
+```bash
+# View real-time logs
+serverless logs -f functionName --stage dev --tail
+
+# View specific time range
+serverless logs -f functionName --startTime 1h --stage dev
+```
+
+### Health Monitoring
+```bash
+# API health check
+curl https://your-api/health
+
+# Response format:
+{
+  "status": "ok",
+  "timestamp": "2024-12-15T10:30:00.000Z",
+  "checks": {
+    "api": {"status": "ok"},
+    "dynamodb": {"status": "ok"},
+    "s3": {"status": "ok"}
+  }
+}
+```
+
+---
+
+## 🔒 Security Best Practices
+
+### JWT Secrets
+- ✅ Use JWT secret >= 32 characters
+- ✅ Different secrets for dev/staging/production  
+- ✅ Rotate regularly in production
+- ✅ Store in AWS Secrets Manager (production)
+
+### IAM Permissions
+- ✅ Use least privilege principle
+- ✅ Create separate users for different environments
+- ✅ Regularly rotate access keys
+- ✅ Enable MFA on AWS accounts
+
+### CORS Configuration
+```yaml
+# Development
+CORS_ORIGIN=*
+
+# Production
+CORS_ORIGIN=https://your-frontend-domain.com,https://admin.your-domain.com
+```
+
+---
+
+## 🔄 CI/CD Pipeline
+
+### GitHub Actions Example
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy API
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - run: npm ci
+      - run: serverless deploy --stage production
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+```
+
+---
+
+## 📈 Performance & Scaling
+
+### Lambda Configuration
+- **Memory**: 512MB (adjustable)
+- **Timeout**: 30 seconds
+- **Concurrent executions**: 1000 (default)
+
+### DynamoDB
+- **Billing**: Pay-per-request (auto-scaling)
+- **Backup**: Point-in-time recovery enabled
+- **Encryption**: At rest with AWS managed keys
+
+### S3 Configuration
+- **Storage class**: Standard
+- **Lifecycle**: 7-day multipart upload cleanup
+- **Versioning**: Enabled
+- **Encryption**: AES256
+
+---
+
+## 🧪 Testing
+
+### Local Testing
+```bash
+# Start offline mode
+npm run dev
+
+# Test endpoints
+curl http://localhost:3001/health
+curl -X POST http://localhost:3001/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "demo", "password": "password"}'
+```
+
+### Unit Tests
+```bash
+# Run tests (if implemented)
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+### Load Testing
+```bash
+# Example with curl
+for i in {1..100}; do
+  curl -s https://your-api/health > /dev/null &
+done
+wait
+```
+
+---
+
+## 🔧 Advanced Configuration
+
+### Custom Domains
+```yaml
+# serverless.yml
+custom:
+  customDomain:
+    domainName: api.your-domain.com
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+```
+
+### VPC Configuration
+```yaml
+# serverless.yml
+provider:
+  vpc:
+    securityGroupIds:
+      - sg-xxxxxxxxx
+    subnetIds:
+      - subnet-xxxxxxxxx
+      - subnet-yyyyyyyyy
+```
+
+### Environment Variables
+```bash
+# Development
+NODE_ENV=development
+DEBUG_MODE=true
+DEMO_USER_ENABLED=true
+
+# Production  
+NODE_ENV=production
+DEBUG_MODE=false
+DEMO_USER_ENABLED=false
+RATE_LIMIT_ENABLED=true
+```
+
+---
+
+## 📋 Migration Guide
+
+### From v1.0 to v2.0
+```bash
+# Backup existing data
+aws dynamodb create-backup --table-name your-table --backup-name backup-$(date +%s)
+
+# Deploy new version
+serverless deploy --stage production
+
+# Verify migration
+curl https://your-api/health
+```
+
+---
+
+## 🆘 Support & Contributing
+
+### Getting Help
+- **Issues**: Create GitHub issues for bugs
+- **Documentation**: Check this README and API docs
+- **Logs**: Use CloudWatch logs for debugging
+- **Community**: Join discussions in project repository
+
+### Contributing
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Run linting and tests
-6. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Setup
+```bash
+# Clone your fork
+git clone https://github.com/yourusername/cellebrite-screen-capture-api.git
+cd cellebrite-screen-capture-api
+
+# Install dependencies
+npm install
+
+# Create feature branch
+git checkout -b feature/your-feature
+
+# Make changes and test
+npm run dev
+npm test
+
+# Submit PR
+git push origin feature/your-feature
+```
+
+---
 
 ## 📄 License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+---
 
-- **Issues**: Create GitHub issues for bugs
-- **Documentation**: Check API documentation
-- **Logs**: Use CloudWatch logs for debugging
-- **Monitoring**: Use CloudWatch metrics and alarms
+## 🏆 Acknowledgments
+
+- **AWS Serverless** team for the amazing platform
+- **Serverless Framework** for simplifying deployments
+- **Open source community** for the tools and libraries used
+
+---
+
+**🚀 Ready to deploy? Start with the [Quick Setup](#-quick-setup-3-steps) section!**

@@ -17,8 +17,8 @@ const JWT_EXPIRY = '24h';
 // Demo user for development
 const DEMO_USER = {
   id: 'demo-user-001',
-  username: 'demo.user@cellebrite.com',
-  email: 'demo.user@cellebrite.com',
+  username: 'demo',
+  email: 'demo',
   firstName: 'Demo',
   lastName: 'User',
   role: 'analyst',
@@ -57,6 +57,9 @@ function generateToken(user) {
 async function getUserByUsernameOrEmail(identifier) {
   try {
     // Try username first
+    if (identifier === DEMO_USER.username || identifier === DEMO_USER.email) {
+      return DEMO_USER;
+    }
     const usernameQuery = {
       TableName: USERS_TABLE,
       IndexName: 'UsernameIndex',

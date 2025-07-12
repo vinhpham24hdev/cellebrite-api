@@ -41,6 +41,7 @@ coverage/
 # Build outputs
 dist/
 build/
+.webpack
 
 # Temporary folders
 tmp/

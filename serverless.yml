@@ -1,4 +1,4 @@
-# serverless.yml - Updated with environment variables support
+# serverless.yml - Fixed with correct handler paths
 
 service: cellebrite-screen-capture-api
 
@@ -102,7 +102,6 @@ provider:
             - s3:ListBucket
           Resource:
             - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}"
-        # X-Ray permissions (if enabled)
         - Effect: Allow
           Action:
             - xray:PutTraceSegments
@@ -112,7 +111,7 @@ provider:
             StringEquals:
               "aws:RequestedRegion": "${self:provider.region}"
 
-# Functions remain the same...
+# Functions with correct handler paths
 functions:
   # Health Check
   health:
@@ -156,7 +155,7 @@ functions:
           method: post
           cors: true
 
-  # Cases endpoints (FIXED paths)
+  # Cases endpoints
   getCases:
     handler: src/handlers/cases.getCases
     events:
@@ -287,7 +286,7 @@ functions:
           method: get
           cors: true
 
-# Resources remain the same...
+# Resources remain the same
 resources:
   Resources:
     # S3 Bucket for file uploads
@@ -315,7 +314,7 @@ resources:
               AbortIncompleteMultipartUpload:
                 DaysAfterInitiation: 7
 
-    # DynamoDB Tables (same as before)
+    # DynamoDB Tables
     UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -467,6 +466,7 @@ custom:
     webpackConfig: ./webpack.config.js
     includeModules: true
     packager: 'npm'
+    keepOutputDirectory: true
   serverless-offline:
     httpPort: 3001
     host: 0.0.0.0
