@@ -1,24 +1,72 @@
+# serverless.yml - Updated with environment variables support
+
 service: cellebrite-screen-capture-api
 
 frameworkVersion: '3'
 
+# Load environment variables based on stage
+useDotenv: true
+
 provider:
   name: aws
   runtime: nodejs18.x
-  region: ${opt:region, 'ap-southeast-2'}
-  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, env:REGION, 'ap-southeast-2'}
+  stage: ${opt:stage, env:STAGE, 'dev'}
   timeout: 30
   memorySize: 512
   
   environment:
+    # Environment Info
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
+    NODE_ENV: ${env:NODE_ENV, 'development'}
+    
+    # Database Tables (Auto-generated)
     USERS_TABLE: ${self:service}-users-${self:provider.stage}
     CASES_TABLE: ${self:service}-cases-${self:provider.stage}
     FILES_TABLE: ${self:service}-files-${self:provider.stage}
+    
+    # S3 Bucket (Auto-generated)
     S3_BUCKET: ${self:service}-uploads-${self:provider.stage}
+    
+    # Authentication
     JWT_SECRET: ${env:JWT_SECRET, 'your-super-secret-jwt-key-change-in-production'}
+    JWT_EXPIRY: ${env:JWT_EXPIRY, '24h'}
+    
+    # CORS
     CORS_ORIGIN: ${env:CORS_ORIGIN, '*'}
+    
+    # File Upload Configuration
+    MAX_FILE_SIZE: ${env:MAX_FILE_SIZE, '104857600'}
+    ALLOWED_FILE_TYPES: ${env:ALLOWED_FILE_TYPES, 'image/png,image/jpeg,image/webp,image/gif,video/webm,video/mp4,video/quicktime'}
+    UPLOAD_TIMEOUT: ${env:UPLOAD_TIMEOUT, '600000'}
+    
+    # Debug Configuration
+    DEBUG_MODE: ${env:DEBUG_MODE, 'false'}
+    ENABLE_CONSOLE_LOGS: ${env:ENABLE_CONSOLE_LOGS, 'false'}
+    LOG_LEVEL: ${env:LOG_LEVEL, 'info'}
+    
+    # Demo User Configuration
+    DEMO_USER_ENABLED: ${env:DEMO_USER_ENABLED, 'false'}
+    DEMO_USERNAME: ${env:DEMO_USERNAME, 'demo.user@cellebrite.com'}
+    DEMO_PASSWORD: ${env:DEMO_PASSWORD, 'password'}
+    
+    # Rate Limiting
+    RATE_LIMIT_ENABLED: ${env:RATE_LIMIT_ENABLED, 'false'}
+    RATE_LIMIT_REQUESTS: ${env:RATE_LIMIT_REQUESTS, '100'}
+    RATE_LIMIT_WINDOW: ${env:RATE_LIMIT_WINDOW, '3600'}
+    
+    # Error Tracking
+    SENTRY_DSN: ${env:SENTRY_DSN, ''}
+    ERROR_TRACKING_ENABLED: ${env:ERROR_TRACKING_ENABLED, 'false'}
+    
+    # Monitoring
+    CLOUDWATCH_LOGS_ENABLED: ${env:CLOUDWATCH_LOGS_ENABLED, 'true'}
+    XRAY_TRACING_ENABLED: ${env:XRAY_TRACING_ENABLED, 'false'}
+    
+  # Enable X-Ray tracing if configured
+  tracing:
+    lambda: ${env:XRAY_TRACING_ENABLED, 'false'}
     
   iam:
     role:
@@ -54,7 +102,17 @@ provider:
             - s3:ListBucket
           Resource:
             - "arn:aws:s3:::${self:provider.environment.S3_BUCKET}"
+        # X-Ray permissions (if enabled)
+        - Effect: Allow
+          Action:
+            - xray:PutTraceSegments
+            - xray:PutTelemetryRecords
+          Resource: "*"
+          Condition:
+            StringEquals:
+              "aws:RequestedRegion": "${self:provider.region}"
 
+# Functions remain the same...
 functions:
   # Health Check
   health:
@@ -65,7 +123,7 @@ functions:
           method: get
           cors: true
 
-  # Authentication endpoints
+  # Authentication endpoints  
   login:
     handler: src/handlers/auth.login
     events:
@@ -98,7 +156,7 @@ functions:
           method: post
           cors: true
 
-  # Cases endpoints
+  # Cases endpoints (FIXED paths)
   getCases:
     handler: src/handlers/cases.getCases
     events:
@@ -182,6 +240,7 @@ functions:
   # Upload endpoints
   getPresignedUrl:
     handler: src/handlers/upload.getPresignedUrl
+    timeout: 60
     events:
       - http:
           path: /upload/presigned-url
@@ -228,6 +287,7 @@ functions:
           method: get
           cors: true
 
+# Resources remain the same...
 resources:
   Resources:
     # S3 Bucket for file uploads
@@ -255,7 +315,7 @@ resources:
               AbortIncompleteMultipartUpload:
                 DaysAfterInitiation: 7
 
-    # DynamoDB Tables
+    # DynamoDB Tables (same as before)
     UsersTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -384,6 +444,19 @@ resources:
       Value: ${self:provider.environment.S3_BUCKET}
       Export:
         Name: ${self:service}-${self:provider.stage}-s3Bucket
+
+    ApiEndpoint:
+      Value:
+        Fn::Join:
+          - ''
+          - - 'https://'
+            - Ref: ApiGatewayRestApi
+            - '.execute-api.'
+            - ${self:provider.region}
+            - '.amazonaws.com/'
+            - ${self:provider.stage}
+      Export:
+        Name: ${self:service}-${self:provider.stage}-apiEndpoint
 
 plugins:
   - serverless-offline
